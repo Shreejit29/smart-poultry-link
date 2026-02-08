@@ -480,3 +480,47 @@ def admin_block_farmer(farmer_id: int, is_blocked: int):
         }
     finally:
         db.close()
+# ========================
+# ADMIN ANALYTICS
+# ========================
+@router.get("/admin/analytics")
+def admin_analytics():
+    db = SessionLocal()
+    try:
+        total_users = db.query(User).count()
+        total_farmers = db.query(Farmer).count()
+        active_farmers = db.query(Farmer).filter(Farmer.is_active == 1).count()
+
+        total_orders = db.query(Order).count()
+        successful_orders = db.query(Order).filter(Order.status == "PAID").count()
+        failed_orders = db.query(Order).filter(Order.status == "FAILED").count()
+
+        avg_user_trust = (
+            db.query(User.trust).all()
+        )
+        avg_user_trust = (
+            sum([u[0] for u in avg_user_trust]) / len(avg_user_trust)
+            if avg_user_trust else 0
+        )
+
+        avg_farmer_trust = (
+            db.query(Farmer.trust).all()
+        )
+        avg_farmer_trust = (
+            sum([f[0] for f in avg_farmer_trust]) / len(avg_farmer_trust)
+            if avg_farmer_trust else 0
+        )
+
+        return {
+            "total_users": total_users,
+            "total_farmers": total_farmers,
+            "active_farmers": active_farmers,
+            "total_orders": total_orders,
+            "successful_orders": successful_orders,
+            "failed_orders": failed_orders,
+            "avg_user_trust": round(avg_user_trust, 2),
+            "avg_farmer_trust": round(avg_farmer_trust, 2)
+        }
+
+    finally:
+        db.close()
