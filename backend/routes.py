@@ -3,7 +3,7 @@ from database import SessionLocal
 from models import User, Order
 from auth import hash_password, verify_password, create_access_token
 from payment_dummy import process_payment
-
+from models import User, Order, Farmer
 router = APIRouter()
 
 
@@ -106,6 +106,53 @@ def place_order(qty: int, user_id: int):
             "payment_status": payment["payment_status"],
             "transaction_id": payment["transaction_id"],
             "updated_trust": user.trust
+        }
+
+    finally:
+        db.close()
+# ------------------------
+# FARMER REGISTRATION
+# ------------------------
+@router.post("/farmer/register")
+def register_farmer(
+    user_id: int,
+    capacity_kg: int,
+    location: str
+):
+    db = SessionLocal()
+    try:
+        # Check user exists
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Check farmer already exists
+        existing_farmer = db.query(Farmer).filter(Farmer.user_id == user_id).first()
+        if existing_farmer:
+            raise HTTPException(
+                status_code=400,
+                detail="Farmer profile already exists for this user"
+            )
+
+        farmer = Farmer(
+            user_id=user_id,
+            capacity_kg=capacity_kg,
+            available_kg=capacity_kg,
+            location=location,
+            is_active=1,
+            trust=0.5,
+            acceptance_rate=1.0,
+            sla_score=1.0
+        )
+
+        db.add(farmer)
+        db.commit()
+
+        return {
+            "message": "Farmer registered successfully",
+            "farmer_id": farmer.id,
+            "capacity_kg": farmer.capacity_kg,
+            "location": farmer.location
         }
 
     finally:
