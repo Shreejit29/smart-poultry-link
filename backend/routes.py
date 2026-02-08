@@ -314,3 +314,28 @@ def farmer_decision(
 
     finally:
         db.close()
+# ------------------------
+# FARMER ORDER INBOX
+# ------------------------
+@router.get("/farmer/orders")
+def farmer_orders(farmer_id: int):
+    db = SessionLocal()
+    try:
+        orders = (
+            db.query(Order)
+            .filter(Order.farmer_id == farmer_id)
+            .filter(Order.status == "ASSIGNED")
+            .all()
+        )
+
+        return [
+            {
+                "order_id": o.id,
+                "qty": o.qty,
+                "status": o.status
+            }
+            for o in orders
+        ]
+
+    finally:
+        db.close()
