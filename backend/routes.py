@@ -339,3 +339,66 @@ def farmer_orders(farmer_id: int):
 
     finally:
         db.close()
+# ========================
+# ADMIN DASHBOARD APIs
+# ========================
+
+@router.get("/admin/users")
+def admin_users():
+    db = SessionLocal()
+    try:
+        users = db.query(User).all()
+        return [
+            {
+                "user_id": u.id,
+                "username": u.username,
+                "role": u.role,
+                "trust": u.trust
+            }
+            for u in users
+        ]
+    finally:
+        db.close()
+
+
+@router.get("/admin/farmers")
+def admin_farmers():
+    db = SessionLocal()
+    try:
+        farmers = db.query(Farmer).all()
+        return [
+            {
+                "farmer_id": f.id,
+                "user_id": f.user_id,
+                "capacity_kg": f.capacity_kg,
+                "available_kg": f.available_kg,
+                "location": f.location,
+                "is_active": bool(f.is_active),
+                "trust": f.trust,
+                "acceptance_rate": f.acceptance_rate,
+                "sla_score": f.sla_score
+            }
+            for f in farmers
+        ]
+    finally:
+        db.close()
+
+
+@router.get("/admin/orders")
+def admin_orders():
+    db = SessionLocal()
+    try:
+        orders = db.query(Order).all()
+        return [
+            {
+                "order_id": o.id,
+                "user_id": o.user_id,
+                "farmer_id": o.farmer_id,
+                "qty": o.qty,
+                "status": o.status,
+                "payment_status": o.payment_status
+            }
+            for o in orders
+        ]
+    finally:
+        db.close()
