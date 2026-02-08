@@ -5,7 +5,7 @@ from auth import hash_password, verify_password, create_access_token
 from payment_dummy import process_payment
 from models import User, Order, Farmer
 router = APIRouter()
-
+from models import User, Order, Farmer
 
 # ------------------------
 # USER REGISTRATION
@@ -181,6 +181,36 @@ def farmer_dashboard(user_id: int):
             "trust": farmer.trust,
             "acceptance_rate": farmer.acceptance_rate,
             "sla_score": farmer.sla_score
+        }
+
+    finally:
+        db.close()
+# ------------------------
+# FARMER AVAILABILITY TOGGLE
+# ------------------------
+@router.post("/farmer/availability")
+def toggle_farmer_availability(user_id: int, is_active: int):
+    db = SessionLocal()
+    try:
+        farmer = db.query(Farmer).filter(Farmer.user_id == user_id).first()
+        if not farmer:
+            raise HTTPException(
+                status_code=404,
+                detail="Farmer profile not found"
+            )
+
+        if is_active not in (0, 1):
+            raise HTTPException(
+                status_code=400,
+                detail="is_active must be 0 (offline) or 1 (online)"
+            )
+
+        farmer.is_active = is_active
+        db.commit()
+
+        return {
+            "message": "Availability updated",
+            "is_active": bool(farmer.is_active)
         }
 
     finally:
