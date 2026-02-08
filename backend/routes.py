@@ -402,3 +402,81 @@ def admin_orders():
         ]
     finally:
         db.close()
+# ========================
+# ADMIN CONTROLS
+# ========================
+
+@router.post("/admin/user/trust")
+def admin_update_user_trust(user_id: int, trust: float):
+    db = SessionLocal()
+    try:
+        if trust < 0.0 or trust > 1.0:
+            raise HTTPException(status_code=400, detail="Trust must be between 0 and 1")
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user.trust = trust
+        db.commit()
+
+        return {"message": "User trust updated", "trust": user.trust}
+    finally:
+        db.close()
+
+
+@router.post("/admin/user/block")
+def admin_block_user(user_id: int, is_blocked: int):
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user.is_blocked = is_blocked
+        db.commit()
+
+        return {
+            "message": "User block status updated",
+            "is_blocked": bool(user.is_blocked)
+        }
+    finally:
+        db.close()
+
+
+@router.post("/admin/farmer/trust")
+def admin_update_farmer_trust(farmer_id: int, trust: float):
+    db = SessionLocal()
+    try:
+        if trust < 0.0 or trust > 1.0:
+            raise HTTPException(status_code=400, detail="Trust must be between 0 and 1")
+
+        farmer = db.query(Farmer).filter(Farmer.id == farmer_id).first()
+        if not farmer:
+            raise HTTPException(status_code=404, detail="Farmer not found")
+
+        farmer.trust = trust
+        db.commit()
+
+        return {"message": "Farmer trust updated", "trust": farmer.trust}
+    finally:
+        db.close()
+
+
+@router.post("/admin/farmer/block")
+def admin_block_farmer(farmer_id: int, is_blocked: int):
+    db = SessionLocal()
+    try:
+        farmer = db.query(Farmer).filter(Farmer.id == farmer_id).first()
+        if not farmer:
+            raise HTTPException(status_code=404, detail="Farmer not found")
+
+        farmer.is_blocked = is_blocked
+        db.commit()
+
+        return {
+            "message": "Farmer block status updated",
+            "is_blocked": bool(farmer.is_blocked)
+        }
+    finally:
+        db.close()
