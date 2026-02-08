@@ -157,3 +157,31 @@ def register_farmer(
 
     finally:
         db.close()
+# ------------------------
+# FARMER DASHBOARD (VIEW METRICS)
+# ------------------------
+@router.get("/farmer/dashboard")
+def farmer_dashboard(user_id: int):
+    db = SessionLocal()
+    try:
+        farmer = db.query(Farmer).filter(Farmer.user_id == user_id).first()
+        if not farmer:
+            raise HTTPException(
+                status_code=404,
+                detail="Farmer profile not found for this user"
+            )
+
+        return {
+            "farmer_id": farmer.id,
+            "user_id": farmer.user_id,
+            "capacity_kg": farmer.capacity_kg,
+            "available_kg": farmer.available_kg,
+            "location": farmer.location,
+            "is_active": bool(farmer.is_active),
+            "trust": farmer.trust,
+            "acceptance_rate": farmer.acceptance_rate,
+            "sla_score": farmer.sla_score
+        }
+
+    finally:
+        db.close()
