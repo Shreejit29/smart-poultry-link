@@ -7,8 +7,6 @@ BACKEND_URL = "https://smart-poultry-link.onrender.com"
 def farmer_ui():
     st.subheader("🚜 Farmer Dashboard")
 
-    # For MVP: user_id is fixed / known
-    # Later this will come from JWT
     user_id = st.number_input(
         "Your User ID",
         min_value=1,
@@ -29,15 +27,35 @@ def farmer_ui():
 
             data = response.json()
 
-            # Status
-            if data["is_active"]:
-                st.success("🟢 Status: Active")
-            else:
-                st.warning("🔴 Status: Offline")
+            # Availability toggle
+            current_status = data["is_active"]
+            status_label = "Online" if current_status else "Offline"
+
+            st.subheader(f"Status: {status_label}")
+
+            new_status = st.toggle(
+                "Go Online / Offline",
+                value=current_status
+            )
+
+            if new_status != current_status:
+                toggle_res = requests.post(
+                    f"{BACKEND_URL}/farmer/availability",
+                    params={
+                        "user_id": user_id,
+                        "is_active": 1 if new_status else 0
+                    },
+                    timeout=10
+                )
+
+                if toggle_res.status_code == 200:
+                    st.success("Availability updated")
+                else:
+                    st.error("Failed to update availability")
 
             st.divider()
 
-            # Capacity
+            # Capacity metrics
             col1, col2 = st.columns(2)
             col1.metric("Total Capacity (kg)", data["capacity_kg"])
             col2.metric("Available (kg)", data["available_kg"])
