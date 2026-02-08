@@ -26,43 +26,37 @@ def register(username: str, password: str, role: str):
 
     return {"message": "User registered successfully"}
 
-
-@router.post("/login")
-def login(username: str, password: str):
-    db = SessionLocal()
-
-    user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    token = create_access_token(
-        {"user_id": user.id, "role": user.role}
-    )
-
-    return {
-        "access_token": token,
-        "role": user.role,
-        "trust": user.trust
-    }
-
-
 @router.post("/order")
 def place_order(qty: int, user_id: int):
     db = SessionLocal()
 
-    payment = process_payment(qty * 200)  # dummy pricing
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    payment = process_payment(qty * 200)
+
+    # Trust score update rule
+    if payment["payment_status"] == "SUCCESS":
+        user.trust = min(user.trust + 0.02, 1.0)
+        order_status = "PAID"
+    else:
+        user.trust = max(user.trust - 0.05, 0.0)
+        order_status = "FAILED"
 
     order = Order(
         qty=qty,
         user_id=user_id,
-        status="PAID" if payment["payment_status"] == "SUCCESS" else "FAILED",
+        status=order_status,
         payment_status=payment["payment_status"]
     )
+
     db.add(order)
     db.commit()
 
     return {
-        "order_status": order.status,
-        "payment_status": order.payment_status,
-        "transaction_id": payment["transaction_id"]
+        "order_status": order_status,
+        "payment_status": payment["payment_status"],
+        "transaction_id": payment["transaction_id"],
+        "updated_trust": user.trust
     }
