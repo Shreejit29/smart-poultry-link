@@ -10,7 +10,7 @@ class User(Base):
     password = Column(String, nullable=False)
     role = Column(String, nullable=False)   # consumer / admin
     trust = Column(Float, default=0.5)
-
+    is_blocked = Column(Integer, default=0)
 
 class Order(Base):
     __tablename__ = "orders"
@@ -42,3 +42,4 @@ class Farmer(Base):
     trust = Column(Float, default=0.5)
     acceptance_rate = Column(Float, default=1.0)
     sla_score = Column(Float, default=1.0)
+    is_blocked = Column(Integer, default=0)
