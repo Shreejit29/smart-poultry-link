@@ -403,86 +403,146 @@ def admin_orders():
     finally:
         db.close()
 # ========================
-# ADMIN CONTROLS
+# ADMIN DASHBOARD & CONTROL
 # ========================
 
-@router.post("/admin/user/trust")
-def admin_update_user_trust(user_id: int, trust: float):
+from fastapi import HTTPException
+from database import SessionLocal
+from models import User, Farmer, Order
+
+# ---------- USERS ----------
+@router.get("/admin/users")
+def admin_users():
     db = SessionLocal()
     try:
-        if trust < 0.0 or trust > 1.0:
-            raise HTTPException(status_code=400, detail="Trust must be between 0 and 1")
+        users = db.query(User).all()
+        return [
+            {
+                "user_id": u.id,
+                "username": u.username,
+                "role": u.role,
+                "trust": u.trust,
+                "is_blocked": bool(u.is_blocked)
+            }
+            for u in users
+        ]
+    finally:
+        db.close()
 
+
+@router.post("/admin/user/trust")
+def admin_user_trust(user_id: int, trust: float):
+    if trust < 0 or trust > 1:
+        raise HTTPException(400, "Trust must be between 0 and 1")
+
+    db = SessionLocal()
+    try:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(404, "User not found")
 
         user.trust = trust
         db.commit()
-
-        return {"message": "User trust updated", "trust": user.trust}
+        return {"message": "User trust updated", "trust": trust}
     finally:
         db.close()
 
 
 @router.post("/admin/user/block")
-def admin_block_user(user_id: int, is_blocked: int):
+def admin_user_block(user_id: int, is_blocked: int):
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(404, "User not found")
 
         user.is_blocked = is_blocked
         db.commit()
+        return {"message": "User block updated", "is_blocked": bool(is_blocked)}
+    finally:
+        db.close()
 
-        return {
-            "message": "User block status updated",
-            "is_blocked": bool(user.is_blocked)
-        }
+
+# ---------- FARMERS ----------
+@router.get("/admin/farmers")
+def admin_farmers():
+    db = SessionLocal()
+    try:
+        farmers = db.query(Farmer).all()
+        return [
+            {
+                "farmer_id": f.id,
+                "user_id": f.user_id,
+                "capacity_kg": f.capacity_kg,
+                "available_kg": f.available_kg,
+                "location": f.location,
+                "is_active": bool(f.is_active),
+                "trust": f.trust,
+                "acceptance_rate": f.acceptance_rate,
+                "sla_score": f.sla_score,
+                "is_blocked": bool(f.is_blocked)
+            }
+            for f in farmers
+        ]
     finally:
         db.close()
 
 
 @router.post("/admin/farmer/trust")
-def admin_update_farmer_trust(farmer_id: int, trust: float):
+def admin_farmer_trust(farmer_id: int, trust: float):
+    if trust < 0 or trust > 1:
+        raise HTTPException(400, "Trust must be between 0 and 1")
+
     db = SessionLocal()
     try:
-        if trust < 0.0 or trust > 1.0:
-            raise HTTPException(status_code=400, detail="Trust must be between 0 and 1")
-
         farmer = db.query(Farmer).filter(Farmer.id == farmer_id).first()
         if not farmer:
-            raise HTTPException(status_code=404, detail="Farmer not found")
+            raise HTTPException(404, "Farmer not found")
 
         farmer.trust = trust
         db.commit()
-
-        return {"message": "Farmer trust updated", "trust": farmer.trust}
+        return {"message": "Farmer trust updated", "trust": trust}
     finally:
         db.close()
 
 
 @router.post("/admin/farmer/block")
-def admin_block_farmer(farmer_id: int, is_blocked: int):
+def admin_farmer_block(farmer_id: int, is_blocked: int):
     db = SessionLocal()
     try:
         farmer = db.query(Farmer).filter(Farmer.id == farmer_id).first()
         if not farmer:
-            raise HTTPException(status_code=404, detail="Farmer not found")
+            raise HTTPException(404, "Farmer not found")
 
         farmer.is_blocked = is_blocked
         db.commit()
-
-        return {
-            "message": "Farmer block status updated",
-            "is_blocked": bool(farmer.is_blocked)
-        }
+        return {"message": "Farmer block updated", "is_blocked": bool(is_blocked)}
     finally:
         db.close()
-# ========================
-# ADMIN ANALYTICS
-# ========================
+
+
+# ---------- ORDERS ----------
+@router.get("/admin/orders")
+def admin_orders():
+    db = SessionLocal()
+    try:
+        orders = db.query(Order).all()
+        return [
+            {
+                "order_id": o.id,
+                "user_id": o.user_id,
+                "farmer_id": o.farmer_id,
+                "qty": o.qty,
+                "status": o.status,
+                "payment_status": o.payment_status
+            }
+            for o in orders
+        ]
+    finally:
+        db.close()
+
+
+# ---------- ANALYTICS ----------
 @router.get("/admin/analytics")
 def admin_analytics():
     db = SessionLocal()
@@ -490,37 +550,22 @@ def admin_analytics():
         total_users = db.query(User).count()
         total_farmers = db.query(Farmer).count()
         active_farmers = db.query(Farmer).filter(Farmer.is_active == 1).count()
-
         total_orders = db.query(Order).count()
-        successful_orders = db.query(Order).filter(Order.status == "PAID").count()
+        success_orders = db.query(Order).filter(Order.status == "PAID").count()
         failed_orders = db.query(Order).filter(Order.status == "FAILED").count()
 
-        avg_user_trust = (
-            db.query(User.trust).all()
-        )
-        avg_user_trust = (
-            sum([u[0] for u in avg_user_trust]) / len(avg_user_trust)
-            if avg_user_trust else 0
-        )
-
-        avg_farmer_trust = (
-            db.query(Farmer.trust).all()
-        )
-        avg_farmer_trust = (
-            sum([f[0] for f in avg_farmer_trust]) / len(avg_farmer_trust)
-            if avg_farmer_trust else 0
-        )
+        avg_user_trust = sum([u.trust for u in db.query(User).all()]) / max(total_users, 1)
+        avg_farmer_trust = sum([f.trust for f in db.query(Farmer).all()]) / max(total_farmers, 1)
 
         return {
             "total_users": total_users,
             "total_farmers": total_farmers,
             "active_farmers": active_farmers,
             "total_orders": total_orders,
-            "successful_orders": successful_orders,
+            "successful_orders": success_orders,
             "failed_orders": failed_orders,
             "avg_user_trust": round(avg_user_trust, 2),
             "avg_farmer_trust": round(avg_farmer_trust, 2)
         }
-
     finally:
         db.close()
