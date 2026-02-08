@@ -215,3 +215,46 @@ def toggle_farmer_availability(user_id: int, is_active: int):
 
     finally:
         db.close()
+# ------------------------
+# ORDER ASSIGNMENT (SYSTEM)
+# ------------------------
+@router.post("/order/assign")
+def assign_order(order_id: int):
+    db = SessionLocal()
+    try:
+        order = db.query(Order).filter(Order.id == order_id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        if order.status != "PAID":
+            raise HTTPException(
+                status_code=400,
+                detail="Order not eligible for assignment"
+            )
+
+        # Select best available farmer (simple logic)
+        farmer = (
+            db.query(Farmer)
+            .filter(Farmer.is_active == 1)
+            .order_by(Farmer.trust.desc())
+            .first()
+        )
+
+        if not farmer:
+            raise HTTPException(
+                status_code=404,
+                detail="No active farmers available"
+            )
+
+        order.farmer_id = farmer.id
+        order.status = "ASSIGNED"
+        db.commit()
+
+        return {
+            "message": "Order assigned",
+            "order_id": order.id,
+            "farmer_id": farmer.id
+        }
+
+    finally:
+        db.close()
