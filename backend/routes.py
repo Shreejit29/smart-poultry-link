@@ -258,3 +258,59 @@ def assign_order(order_id: int):
 
     finally:
         db.close()
+# ------------------------
+# FARMER ACCEPT / REJECT ORDER
+# ------------------------
+@router.post("/farmer/order/decision")
+def farmer_decision(
+    farmer_id: int,
+    order_id: int,
+    decision: str  # ACCEPT / REJECT
+):
+    db = SessionLocal()
+    try:
+        order = db.query(Order).filter(Order.id == order_id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        if order.farmer_id != farmer_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Order not assigned to this farmer"
+            )
+
+        farmer = db.query(Farmer).filter(Farmer.id == farmer_id).first()
+        if not farmer:
+            raise HTTPException(status_code=404, detail="Farmer not found")
+
+        if decision == "ACCEPT":
+            order.status = "ACCEPTED"
+
+            # Improve acceptance rate slightly
+            farmer.acceptance_rate = min(farmer.acceptance_rate + 0.02, 1.0)
+
+        elif decision == "REJECT":
+            order.status = "REJECTED"
+            order.farmer_id = None
+
+            # Penalties
+            farmer.trust = max(farmer.trust - 0.05, 0.0)
+            farmer.acceptance_rate = max(farmer.acceptance_rate - 0.1, 0.0)
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Decision must be ACCEPT or REJECT"
+            )
+
+        db.commit()
+
+        return {
+            "order_id": order.id,
+            "decision": decision,
+            "updated_trust": farmer.trust,
+            "acceptance_rate": farmer.acceptance_rate
+        }
+
+    finally:
+        db.close()
