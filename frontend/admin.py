@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import matplotlib.pyplot as plt
 
 BACKEND_URL = "https://smart-poultry-link.onrender.com"
 
@@ -8,59 +9,60 @@ BACKEND_URL = "https://smart-poultry-link.onrender.com"
 def admin_ui():
     st.subheader("🛠️ Admin Dashboard")
 
-    tab1, tab2, tab3 = st.tabs(["👤 Users", "🚜 Farmers", "🧾 Orders"])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["📊 Analytics", "👤 Users", "🚜 Farmers", "🧾 Orders"]
+    )
+
+    # ---------------- ANALYTICS ----------------
+    with tab1:
+        st.markdown("### 📊 Platform KPIs")
+
+        res = requests.get(f"{BACKEND_URL}/admin/analytics")
+        data = res.json()
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Users", data["total_users"])
+        col2.metric("Total Farmers", data["total_farmers"])
+        col3.metric("Active Farmers", data["active_farmers"])
+
+        col4, col5, col6 = st.columns(3)
+        col4.metric("Total Orders", data["total_orders"])
+        col5.metric("Successful Orders", data["successful_orders"])
+        col6.metric("Failed Orders", data["failed_orders"])
+
+        st.divider()
+
+        # Trust charts
+        fig, ax = plt.subplots()
+        ax.bar(
+            ["Consumers", "Farmers"],
+            [data["avg_user_trust"], data["avg_farmer_trust"]]
+        )
+        ax.set_ylim(0, 1)
+        ax.set_ylabel("Average Trust")
+        ax.set_title("Average Trust Levels")
+        st.pyplot(fig)
 
     # ---------------- USERS ----------------
-    with tab1:
+    with tab2:
         st.markdown("### Users")
-        res = requests.get(f"{BACKEND_URL}/admin/users")
-        df = pd.DataFrame(res.json())
+        df = pd.DataFrame(
+            requests.get(f"{BACKEND_URL}/admin/users").json()
+        )
         st.dataframe(df, use_container_width=True)
-
-        st.divider()
-        st.markdown("#### Modify User")
-        user_id = st.number_input("User ID", min_value=1, step=1)
-        trust = st.slider("Trust", 0.0, 1.0, 0.5)
-        block = st.toggle("Block user")
-
-        if st.button("Update User"):
-            requests.post(
-                f"{BACKEND_URL}/admin/user/trust",
-                params={"user_id": user_id, "trust": trust}
-            )
-            requests.post(
-                f"{BACKEND_URL}/admin/user/block",
-                params={"user_id": user_id, "is_blocked": int(block)}
-            )
-            st.success("User updated")
 
     # ---------------- FARMERS ----------------
-    with tab2:
+    with tab3:
         st.markdown("### Farmers")
-        res = requests.get(f"{BACKEND_URL}/admin/farmers")
-        df = pd.DataFrame(res.json())
+        df = pd.DataFrame(
+            requests.get(f"{BACKEND_URL}/admin/farmers").json()
+        )
         st.dataframe(df, use_container_width=True)
 
-        st.divider()
-        st.markdown("#### Modify Farmer")
-        farmer_id = st.number_input("Farmer ID", min_value=1, step=1)
-        trust = st.slider("Farmer Trust", 0.0, 1.0, 0.5)
-        block = st.toggle("Block farmer")
-
-        if st.button("Update Farmer"):
-            requests.post(
-                f"{BACKEND_URL}/admin/farmer/trust",
-                params={"farmer_id": farmer_id, "trust": trust}
-            )
-            requests.post(
-                f"{BACKEND_URL}/admin/farmer/block",
-                params={"farmer_id": farmer_id, "is_blocked": int(block)}
-            )
-            st.success("Farmer updated")
-
     # ---------------- ORDERS ----------------
-    with tab3:
+    with tab4:
         st.markdown("### Orders")
-        res = requests.get(f"{BACKEND_URL}/admin/orders")
-        df = pd.DataFrame(res.json())
+        df = pd.DataFrame(
+            requests.get(f"{BACKEND_URL}/admin/orders").json()
+        )
         st.dataframe(df, use_container_width=True)
