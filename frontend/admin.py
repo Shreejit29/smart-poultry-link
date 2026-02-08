@@ -7,62 +7,72 @@ BACKEND_URL = "https://smart-poultry-link.onrender.com"
 
 
 def admin_ui():
-    st.subheader("🛠️ Admin Dashboard")
+    st.title("🛠️ Admin Control Center")
 
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["📊 Analytics", "👤 Users", "🚜 Farmers", "🧾 Orders"]
-    )
+    tabs = st.tabs(["📊 Analytics", "👤 Users", "🚜 Farmers", "🧾 Orders"])
 
-    # ---------------- ANALYTICS ----------------
-    with tab1:
-        st.markdown("### 📊 Platform KPIs")
-
-        res = requests.get(f"{BACKEND_URL}/admin/analytics")
-        data = res.json()
+    # ================= ANALYTICS =================
+    with tabs[0]:
+        data = requests.get(f"{BACKEND_URL}/admin/analytics").json()
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Users", data["total_users"])
-        col2.metric("Total Farmers", data["total_farmers"])
+        col1.metric("Users", data["total_users"])
+        col2.metric("Farmers", data["total_farmers"])
         col3.metric("Active Farmers", data["active_farmers"])
 
         col4, col5, col6 = st.columns(3)
-        col4.metric("Total Orders", data["total_orders"])
-        col5.metric("Successful Orders", data["successful_orders"])
-        col6.metric("Failed Orders", data["failed_orders"])
+        col4.metric("Orders", data["total_orders"])
+        col5.metric("Success", data["successful_orders"])
+        col6.metric("Failed", data["failed_orders"])
 
-        st.divider()
-
-        # Trust charts
         fig, ax = plt.subplots()
-        ax.bar(
-            ["Consumers", "Farmers"],
-            [data["avg_user_trust"], data["avg_farmer_trust"]]
-        )
+        ax.bar(["Consumers", "Farmers"],
+               [data["avg_user_trust"], data["avg_farmer_trust"]])
         ax.set_ylim(0, 1)
-        ax.set_ylabel("Average Trust")
-        ax.set_title("Average Trust Levels")
+        ax.set_ylabel("Avg Trust")
         st.pyplot(fig)
 
-    # ---------------- USERS ----------------
-    with tab2:
-        st.markdown("### Users")
-        df = pd.DataFrame(
+    # ================= USERS =================
+    with tabs[1]:
+        users = pd.DataFrame(
             requests.get(f"{BACKEND_URL}/admin/users").json()
         )
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(users, use_container_width=True)
 
-    # ---------------- FARMERS ----------------
-    with tab3:
-        st.markdown("### Farmers")
-        df = pd.DataFrame(
+        st.subheader("Modify User")
+        uid = st.number_input("User ID", min_value=1, step=1)
+        trust = st.slider("Trust", 0.0, 1.0, 0.5)
+        block = st.toggle("Block User")
+
+        if st.button("Update User"):
+            requests.post(f"{BACKEND_URL}/admin/user/trust",
+                          params={"user_id": uid, "trust": trust})
+            requests.post(f"{BACKEND_URL}/admin/user/block",
+                          params={"user_id": uid, "is_blocked": int(block)})
+            st.success("User updated")
+
+    # ================= FARMERS =================
+    with tabs[2]:
+        farmers = pd.DataFrame(
             requests.get(f"{BACKEND_URL}/admin/farmers").json()
         )
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(farmers, use_container_width=True)
 
-    # ---------------- ORDERS ----------------
-    with tab4:
-        st.markdown("### Orders")
-        df = pd.DataFrame(
+        st.subheader("Modify Farmer")
+        fid = st.number_input("Farmer ID", min_value=1, step=1)
+        trust = st.slider("Farmer Trust", 0.0, 1.0, 0.5)
+        block = st.toggle("Block Farmer")
+
+        if st.button("Update Farmer"):
+            requests.post(f"{BACKEND_URL}/admin/farmer/trust",
+                          params={"farmer_id": fid, "trust": trust})
+            requests.post(f"{BACKEND_URL}/admin/farmer/block",
+                          params={"farmer_id": fid, "is_blocked": int(block)})
+            st.success("Farmer updated")
+
+    # ================= ORDERS =================
+    with tabs[3]:
+        orders = pd.DataFrame(
             requests.get(f"{BACKEND_URL}/admin/orders").json()
         )
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(orders, use_container_width=True)
