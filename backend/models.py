@@ -20,6 +20,7 @@ class Order(Base):
     status = Column(String, nullable=False)          # PAID / FAILED
     payment_status = Column(String, nullable=False)  # SUCCESS / FAILED
     user_id = Column(Integer, nullable=False)
+    farmer_id = Column(Integer, nullable=True)
 class Farmer(Base):
     __tablename__ = "farmers"
 
